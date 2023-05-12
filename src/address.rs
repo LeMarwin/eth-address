@@ -4,7 +4,7 @@
 //! https://github.com/ethers-io/ethers.js/blob/master/packages/address/src.ts/index.ts
 
 use anyhow::{anyhow, Result};
-use crypto::{digest::Digest, sha3::Sha3};
+use sha3::{Digest, Keccak256};
 use regex::Regex;
 
 pub fn is_hex_string(value: String, length: usize) -> Result<bool> {
@@ -26,9 +26,10 @@ pub fn get_checksum_address(a: String) -> Result<String> {
     }
     let addr = a.trim_start_matches("0x").to_lowercase();
     let address_hash = {
-        let mut hasher = Sha3::keccak256();
-        hasher.input(addr.as_bytes());
-        hasher.result_str()
+        let mut hasher = Keccak256::new();
+        hasher.update(addr.as_bytes());
+        let res = hasher.finalize();
+        format!("{:x}",res)
     };
 
     Ok(addr
@@ -36,7 +37,6 @@ pub fn get_checksum_address(a: String) -> Result<String> {
         .fold(String::from("0x"), |mut acc, (index, address_char)| {
             // this cannot fail since it's Keccak256 hashed
             let n = u16::from_str_radix(&address_hash[index..index + 1], 16).unwrap();
-
             if n > 7 {
                 // make char uppercase if ith character is 9..f
                 acc.push_str(&address_char.to_uppercase().to_string())
